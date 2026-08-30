@@ -350,6 +350,44 @@
     font-size:14px;
   }
 
+  .error-state{
+    text-align:center;
+    padding:70px 24px;
+    max-width:340px;
+    margin:0 auto;
+  }
+  .error-state .error-icon{
+    font-size:34px;
+    margin-bottom:14px;
+    filter:grayscale(1) opacity(.8);
+  }
+  .error-state h2{
+    font-family:var(--font-display);
+    font-size:16px;
+    text-transform:uppercase;
+    margin-bottom:8px;
+    color:var(--text);
+  }
+  .error-state p{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.55;
+  }
+  .error-retry-btn{
+    margin:20px auto 0;
+    max-width:200px;
+    padding:12px 20px;
+    background:var(--red);
+    color:#fff;
+    border-radius:10px;
+    font-weight:700;
+    font-size:13.5px;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+    transition:background .15s ease;
+  }
+  .error-retry-btn:hover{background:var(--red-glow);}
+
   /* ================= FOOTER ================= */
   .site-footer{
     position:relative; z-index:1;
@@ -1129,36 +1167,41 @@ async function resolveRestaurantId(){
 }
 
 async function fetchMenu(){
+  const forceDemo = new URLSearchParams(location.search).get("demo") === "1";
+  if(forceDemo){
+    IS_DEMO = true;
+    RESTAURANT_CONFIG = DEMO_CONFIG;
+    return DEMO_MENU;
+  }
+
   RESTAURANT_ID = await resolveRestaurantId();
-
   if(!RESTAURANT_ID){
-    IS_DEMO = true;
-    RESTAURANT_CONFIG = DEMO_CONFIG;
-    return DEMO_MENU;
+    throw new Error("Não encontramos um restaurante cadastrado para este link. Confira o domínio configurado no backend.");
   }
 
-  try{
-    const [menuRes, cfgRes] = await Promise.all([
-      fetch(`${CONFIG.API_BASE}/api/v1/cardapio/${RESTAURANT_ID}`),
-      fetch(`${CONFIG.API_BASE}/api/v1/restaurante/${RESTAURANT_ID}/config`)
-    ]);
-    if(!menuRes.ok) throw new Error("cardápio indisponível");
-    const menu = await menuRes.json();
-    RESTAURANT_CONFIG = cfgRes.ok ? await cfgRes.json() : DEMO_CONFIG;
-    RESTAURANT_CATEGORIAS = Array.isArray(RESTAURANT_CONFIG?.categorias_ordem) ? RESTAURANT_CONFIG.categorias_ordem : [];
-    IS_DEMO = false;
-    return Array.isArray(menu) ? menu.filter(i => i.ativo !== false) : [];
-  }catch(err){
-    console.warn("API indisponível, usando dados de demonstração.", err);
-    IS_DEMO = true;
-    RESTAURANT_CONFIG = DEMO_CONFIG;
-    return DEMO_MENU;
+  const [menuRes, cfgRes] = await Promise.all([
+    fetch(`${CONFIG.API_BASE}/api/v1/cardapio/${RESTAURANT_ID}`),
+    fetch(`${CONFIG.API_BASE}/api/v1/restaurante/${RESTAURANT_ID}/config`)
+  ]);
+  if(!menuRes.ok){
+    throw new Error(`Não foi possível carregar o cardápio agora (erro ${menuRes.status}). Tente novamente em instantes.`);
   }
+
+  const menu = await menuRes.json();
+  RESTAURANT_CONFIG = cfgRes.ok ? await cfgRes.json() : {};
+  RESTAURANT_CATEGORIAS = Array.isArray(RESTAURANT_CONFIG?.categorias_ordem) ? RESTAURANT_CONFIG.categorias_ordem : [];
+  IS_DEMO = false;
+
+  const itens = Array.isArray(menu) ? menu.filter(i => i.ativo !== false) : [];
+  if(itens.length === 0){
+    throw new Error("Esse cardápio ainda não tem nenhum item cadastrado.");
+  }
+  return itens;
 }
 
 async function submitOrder(payload){
   if(IS_DEMO){
-    // modo demo — simula resposta da API
+    // modo demo — simula resposta da API (só entra aqui com ?demo=1)
     await new Promise(r => setTimeout(r, 700));
     const fakeId = payload.order_id || ("demo-" + Date.now());
     return { success:true, order:{ id: fakeId, order_number: Math.floor(Math.random()*900+100) }, tracking_link:null };
@@ -1922,27 +1965,54 @@ document.getElementById("aiTooltipClose").onclick = hideAiTooltip;
 /* ============================================================
    INIT
    ============================================================ */
+function showError(msg){
+  ["bestsellersSection", "catNav", "cartFab"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = "none";
+  });
+  document.querySelector(".ai-bubble")?.style.setProperty("display", "none");
+  document.getElementById("brandName").textContent = "Cardápio indisponível";
+
+  document.getElementById("menuMain").innerHTML = `
+    <div class="error-state">
+      <div class="error-icon">⚠️</div>
+      <h2>Não foi possível carregar o cardápio</h2>
+      <p>${escHtml(msg)}</p>
+      <button class="error-retry-btn" id="retryBtn">Tentar novamente</button>
+    </div>
+  `;
+  document.getElementById("retryBtn").onclick = () => location.reload();
+}
+
 (async function init(){
   gsap.set([".hero-sub", ".brand-row", ".ai-bubble"], { opacity:0, y:16 });
   gsap.set(".ai-bubble", { y:-10 });
 
-  MENU = await fetchMenu();
-  applyBranding();
-  renderMenu();
-  updateCartUI();
+  try{
+    MENU = await fetchMenu();
+    applyBranding();
+    renderMenu();
+    updateCartUI();
 
-  const bestsellers = await loadBestsellers();
-  renderBestsellers(bestsellers);
+    const bestsellers = await loadBestsellers();
+    renderBestsellers(bestsellers);
 
-  // intro sequence
-  gsap.timeline()
-    .to(".brand-row", { opacity:1, y:0, duration:.5, ease:"power2.out" })
-    .to(".hero-sub", { opacity:1, y:0, duration:.5, ease:"power2.out" }, "-=.25")
-    .to(".ai-bubble", { opacity:1, y:0, duration:.5, ease:"back.out(1.7)" }, "-=.2");
+    // intro sequence
+    gsap.timeline()
+      .to(".brand-row", { opacity:1, y:0, duration:.5, ease:"power2.out" })
+      .to(".hero-sub", { opacity:1, y:0, duration:.5, ease:"power2.out" }, "-=.25")
+      .to(".ai-bubble", { opacity:1, y:0, duration:.5, ease:"back.out(1.7)" }, "-=.2");
 
-  maybeShowAiTooltip();
+    maybeShowAiTooltip();
+  }catch(err){
+    console.error("Erro ao carregar o cardápio:", err);
+    gsap.to(".brand-row", { opacity:1, y:0, duration:.3 });
+    showError(err.message || "Tente novamente em instantes.");
+  }
+
   document.getElementById("footerYear").textContent = new Date().getFullYear();
 })();
 </script>
+
 </body>
 </html>
