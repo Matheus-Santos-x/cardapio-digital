@@ -251,7 +251,7 @@
 
   /* ================= MENU ================= */
   main{position:relative; z-index:1; padding:8px 20px 20px;}
-  .cat-section{margin-top:32px;}
+  .cat-section{margin-top:32px; scroll-margin-top:66px;}
   .cat-heading{
     display:flex; align-items:baseline; gap:10px;
     margin-bottom:14px;
@@ -746,6 +746,67 @@
     margin-bottom:24px;
   }
 
+  /* ================= VARIATION PICKER (opcoes) ================= */
+  .variation-backdrop{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.6);
+    backdrop-filter:blur(3px);
+    z-index:150;
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0;
+  }
+  .variation-panel{
+    width:100%; max-width:480px;
+    background:#141210;
+    border-radius:20px 20px 0 0;
+    padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -20px 60px rgba(0,0,0,.5);
+  }
+  .variation-head{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px;
+    margin-bottom:6px;
+  }
+  .variation-head h3{
+    font-family:var(--font-display);
+    font-size:16px;
+    text-transform:uppercase;
+  }
+  .variation-close{
+    width:28px; height:28px; border-radius:8px;
+    background:var(--surface);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; color:var(--muted);
+    flex-shrink:0;
+  }
+  .variation-desc{
+    font-size:12.5px; color:var(--muted);
+    line-height:1.5;
+    margin-bottom:16px;
+  }
+  .variation-options{
+    display:flex; flex-direction:column; gap:8px;
+    margin-bottom:18px;
+  }
+  .variation-opt{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:13px 14px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:10px;
+    transition:border-color .2s ease, background .2s ease;
+    font-size:13.5px; font-weight:600;
+  }
+  .variation-opt.selected{
+    border-color:var(--red);
+    background:linear-gradient(90deg, rgba(214,40,40,.12), transparent);
+  }
+  .variation-opt-price{
+    font-family:var(--font-mono);
+    color:var(--red-glow);
+    font-weight:700;
+  }
+
   /* ================= AI MODAL (stub) ================= */
   .ai-modal{
     position:fixed; left:50%; bottom:24px;
@@ -1001,27 +1062,28 @@
 
 <script>
 /* ============================================================
-   🔧 CONFIGURAÇÃO — É SÓ ISSO QUE VOCÊ PRECISA EDITAR
+   🔧 CONFIGURAÇÃO
 
-   1) API_BASE → cole aqui a URL do backend depois de hospedar
-      no EasyPanel. Ex: "https://fluxon-api.seudominio.com"
-      (sem barra "/" no final)
+   Como o cardápio de mesa, esse aqui descobre sozinho de qual
+   restaurante se trata pelo DOMÍNIO que a pessoa está acessando
+   (rota GET /api/v1/dominio-cardapio/:dominio no seu backend).
 
-   2) RESTAURANT_ID → o ID do restaurante no Supabase.
-      Pode fixar direto aqui OU deixar dinâmico via link,
-      ex: seusite.com/?r=ID-DO-RESTAURANTE
+   Ou seja: depois de hospedar esse arquivo no domínio de delivery
+   que o restaurante cadastrar (campo cardapio_delivery_url em
+   /api/v1/restaurante/:id/dominio-delivery), NÃO precisa fixar
+   nenhum RESTAURANT_ID aqui — ele puxa sozinho.
 
-   Enquanto API_BASE ficar vazio, o cardápio roda sozinho com
-   dados de demonstração (dá pra ver o design funcionando sem
-   precisar do backend no ar ainda).
+   Pra testar localmente sem ter o domínio apontado ainda, dá pra
+   forçar um restaurante via link: seusite.com/?r=ID-DO-RESTAURANTE
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://backend.evoriseai.com.br",              // 👉 COLE AQUI a URL do backend quando hospedar
-  RESTAURANT_ID: new URLSearchParams(location.search).get("r") || "", // 👉 ou fixe o ID aqui
+  API_BASE: "https://backend.evoriseai.com.br", // seu backend em produção
 };
-const IS_DEMO = !CONFIG.API_BASE || !CONFIG.RESTAURANT_ID;
+let RESTAURANT_ID = new URLSearchParams(location.search).get("r") || null;
+let IS_DEMO = false; // decidido em tempo real dentro de fetchMenu()
 
-/* Fallback de demonstração — usado enquanto o backend não está configurado */
+/* Fallback de demonstração — só entra em cena se o domínio não
+   bater com nenhum restaurante cadastrado (ex: preview local) */
 const DEMO_CONFIG = {
   nome_exibicao: "Bráza Burgers",
   cor_primaria: "#d62828",
@@ -1042,27 +1104,53 @@ const DEMO_MENU = [
    ============================================================ */
 let MENU = [];
 let RESTAURANT_CONFIG = {};
-let CART = []; // { id, nome, preco, qty }
+let RESTAURANT_CATEGORIAS = []; // ordem/fotos de categoria vindas de categorias_ordem
+let CART = []; // { id, nome, preco, qty, opcaoNome? }
 let SELECTED_PAY = null;
 
 /* ============================================================
    API HELPERS
    ============================================================ */
+
+/* Resolve o restaurant_id pelo domínio atual — mesma rota que
+   o cardápio de mesa usa (/api/v1/dominio-cardapio/:dominio) */
+async function resolveRestaurantId(){
+  if(RESTAURANT_ID) return RESTAURANT_ID; // já veio via ?r= (modo teste)
+  try{
+    const dominio = window.location.hostname;
+    const resp = await fetch(`${CONFIG.API_BASE}/api/v1/dominio-cardapio/${dominio}`);
+    if(!resp.ok) return null;
+    const data = await resp.json();
+    return data.restaurant_id || null;
+  }catch(err){
+    console.warn("Não foi possível resolver o restaurante pelo domínio.", err);
+    return null;
+  }
+}
+
 async function fetchMenu(){
-  if(IS_DEMO){
+  RESTAURANT_ID = await resolveRestaurantId();
+
+  if(!RESTAURANT_ID){
+    IS_DEMO = true;
     RESTAURANT_CONFIG = DEMO_CONFIG;
     return DEMO_MENU;
   }
+
   try{
     const [menuRes, cfgRes] = await Promise.all([
-      fetch(`${CONFIG.API_BASE}/api/v1/cardapio/${CONFIG.RESTAURANT_ID}`),
-      fetch(`${CONFIG.API_BASE}/api/v1/restaurante/${CONFIG.RESTAURANT_ID}/config`)
+      fetch(`${CONFIG.API_BASE}/api/v1/cardapio/${RESTAURANT_ID}`),
+      fetch(`${CONFIG.API_BASE}/api/v1/restaurante/${RESTAURANT_ID}/config`)
     ]);
+    if(!menuRes.ok) throw new Error("cardápio indisponível");
     const menu = await menuRes.json();
     RESTAURANT_CONFIG = cfgRes.ok ? await cfgRes.json() : DEMO_CONFIG;
-    return Array.isArray(menu) ? menu : DEMO_MENU;
+    RESTAURANT_CATEGORIAS = Array.isArray(RESTAURANT_CONFIG?.categorias_ordem) ? RESTAURANT_CONFIG.categorias_ordem : [];
+    IS_DEMO = false;
+    return Array.isArray(menu) ? menu.filter(i => i.ativo !== false) : [];
   }catch(err){
     console.warn("API indisponível, usando dados de demonstração.", err);
+    IS_DEMO = true;
     RESTAURANT_CONFIG = DEMO_CONFIG;
     return DEMO_MENU;
   }
@@ -1098,6 +1186,28 @@ function instagramUrl(v){
   return `https://instagram.com/${v.replace(/^@/, "")}`;
 }
 
+/* O backend às vezes guarda foto_url como uma URL simples e às
+   vezes como um array JSON de várias fotos — trata os dois casos
+   (mesma lógica do cardápio de mesa) */
+function getFotos(item){
+  if(!item || !item.foto_url) return [];
+  try{
+    const parsed = JSON.parse(item.foto_url);
+    if(Array.isArray(parsed)) return parsed.filter(Boolean);
+    return [item.foto_url];
+  }catch{
+    return [item.foto_url];
+  }
+}
+function getPrimeiraFoto(item){
+  return getFotos(item)[0] || null;
+}
+
+
+function escHtml(str){
+  return String(str || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 function applyBranding(){
   const nome = RESTAURANT_CONFIG.nome_exibicao || "restaurante";
   document.getElementById("brandName").textContent = nome;
@@ -1125,32 +1235,57 @@ function applyBranding(){
   }
 }
 
+/* Agrupa por categoria respeitando a ordem salva pelo admin em
+   categorias_ordem (mesma lógica do cardápio de mesa) — se não
+   tiver ordem salva, usa a ordem de aparição dos itens */
 function groupByCategory(items){
   const groups = {};
-  items.filter(i => i.ativo !== false).forEach(item => {
-    const cat = item.categoria || "Geral";
-    if(!groups[cat]) groups[cat] = [];
-    groups[cat].push(item);
-  });
-  return groups;
+  const order = [];
+  const ativos = items.filter(i => i.ativo !== false);
+
+  if(RESTAURANT_CATEGORIAS.length > 0){
+    RESTAURANT_CATEGORIAS.forEach(c => {
+      const nome = c.nome || c;
+      const itens = ativos.filter(i => (i.categoria || "Geral") === nome);
+      if(itens.length > 0){ groups[nome] = itens; order.push(nome); }
+    });
+    // inclui categorias que existem no cardápio mas não estão na ordem salva
+    ativos.forEach(item => {
+      const cat = item.categoria || "Geral";
+      if(!groups[cat]){ groups[cat] = []; order.push(cat); }
+      if(!groups[cat].includes(item)) groups[cat].push(item);
+    });
+  }else{
+    ativos.forEach(item => {
+      const cat = item.categoria || "Geral";
+      if(!groups[cat]){ groups[cat] = []; order.push(cat); }
+      groups[cat].push(item);
+    });
+  }
+
+  order.forEach(cat => groups[cat].sort((a,b) => (a.ordem||0) - (b.ordem||0)));
+  return { groups, order };
 }
 
 function renderMenu(){
-  const groups = groupByCategory(MENU);
+  const { groups, order } = groupByCategory(MENU);
   const catNav = document.getElementById("catNav");
   const main = document.getElementById("menuMain");
   catNav.innerHTML = "";
   main.innerHTML = "";
 
-  if(Object.keys(groups).length === 0){
+  if(order.length === 0){
     main.innerHTML = `<div class="empty-state">Nenhum item disponível no momento.</div>`;
     return;
   }
 
-  Object.entries(groups).forEach(([cat, items], idx) => {
+  order.forEach((cat, idx) => {
+    const items = groups[cat];
+
     const pill = document.createElement("button");
     pill.className = "cat-pill" + (idx === 0 ? " active" : "");
     pill.textContent = cat;
+    pill.dataset.cat = slug(cat);
     pill.onclick = () => {
       document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active"));
       pill.classList.add("active");
@@ -1163,23 +1298,31 @@ function renderMenu(){
     section.id = "sec-" + slug(cat);
     section.innerHTML = `
       <div class="cat-heading">
-        <h2>${cat}</h2>
+        <h2>${escHtml(cat)}</h2>
         <span class="count">${items.length} ${items.length === 1 ? "item" : "itens"}</span>
       </div>
       <div class="item-grid">
-        ${items.map(item => `
+        ${items.map(item => {
+          const temVariacao = Array.isArray(item.opcoes) && item.opcoes.length > 0;
+          const precoExibido = temVariacao
+            ? Math.min(...item.opcoes.map(o => parseFloat(o.preco || 0)))
+            : parseFloat(item.preco || 0);
+          const fotoUrl = getPrimeiraFoto(item);
+          return `
           <div class="item-card" data-id="${item.id}">
-            <div class="item-thumb">${item.foto_url ? `<img src="${item.foto_url}" alt="${item.nome}">` : "🍽️"}</div>
+            <div class="item-thumb">${fotoUrl ? `<img src="${fotoUrl}" alt="${escHtml(item.nome)}" loading="lazy">` : "🍽️"}</div>
             <div class="item-info">
-              <h3>${item.nome}</h3>
-              <p>${item.descricao || ""}</p>
+              <h3>${escHtml(item.nome)}</h3>
+              <p>${escHtml(item.descricao || "")}</p>
               <div class="item-bottom">
-                <span class="item-price">${money(parseFloat(item.preco || 0))}</span>
-                <button class="add-btn" data-add="${item.id}">+</button>
+                <span class="item-price">${temVariacao ? "A partir de " : ""}${money(precoExibido)}</span>
+                ${temVariacao
+                  ? `<button class="add-btn" data-variation="${item.id}">+</button>`
+                  : `<button class="add-btn" data-add="${item.id}">+</button>`}
               </div>
             </div>
-          </div>
-        `).join("")}
+          </div>`;
+        }).join("")}
       </div>
     `;
     main.appendChild(section);
@@ -1203,6 +1346,56 @@ function renderMenu(){
   document.querySelectorAll("[data-add]").forEach(btn => {
     btn.addEventListener("click", e => addToCart(btn.dataset.add, e));
   });
+  document.querySelectorAll("[data-variation]").forEach(btn => {
+    btn.addEventListener("click", e => openVariationPicker(btn.dataset.variation, e));
+  });
+
+  setupScrollSpy();
+}
+
+/* ============================================================
+   SCROLL-SPY — enquanto a pessoa rola a página, a categoria
+   correspondente acende sozinha na barra de navegação (e a barra
+   acompanha horizontalmente pra manter o pill ativo visível)
+   ============================================================ */
+function scrollPillIntoView(pill){
+  const nav = document.getElementById("catNav");
+  const navRect = nav.getBoundingClientRect();
+  const pillRect = pill.getBoundingClientRect();
+  const delta = (pillRect.left - navRect.left) - (navRect.width / 2) + (pillRect.width / 2);
+  nav.scrollBy({ left: delta, behavior: "smooth" });
+}
+
+function setupScrollSpy(){
+  const sections = document.querySelectorAll(".cat-section");
+  if(sections.length === 0) return;
+  const nav = document.getElementById("catNav");
+  const navHeight = nav.offsetHeight || 56;
+
+  if(window._catObserver) window._catObserver.disconnect();
+
+  window._catObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(!entry.isIntersecting) return;
+      const cat = entry.target.id.replace("sec-", "");
+      const pill = catNavPillFor(cat);
+      if(!pill || pill.classList.contains("active")) return;
+
+      document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      scrollPillIntoView(pill);
+    });
+  }, {
+    root: null,
+    rootMargin: `-${navHeight + 8}px 0px -65% 0px`,
+    threshold: 0
+  });
+
+  sections.forEach(s => window._catObserver.observe(s));
+}
+
+function catNavPillFor(catSlug){
+  return document.querySelector(`.cat-pill[data-cat="${catSlug}"]`);
 }
 
 function slug(s){ return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"-"); }
@@ -1219,7 +1412,7 @@ async function loadBestsellers(){
   let picks = [];
   if(!IS_DEMO){
     try{
-      const res = await fetch(`${CONFIG.API_BASE}/api/v1/metrics/${CONFIG.RESTAURANT_ID}/top-products`);
+      const res = await fetch(`${CONFIG.API_BASE}/api/v1/metrics/${RESTAURANT_ID}/top-products`);
       if(res.ok){
         const top = await res.json(); // [{ nome, qty }]
         picks = top
@@ -1245,19 +1438,24 @@ function renderBestsellers(items){
   const scroll = document.getElementById("bsScroll");
   section.style.display = "block";
 
-  scroll.innerHTML = items.map((item, i) => `
+  scroll.innerHTML = items.map((item, i) => {
+    const temVariacao = Array.isArray(item.opcoes) && item.opcoes.length > 0;
+    const preco = temVariacao ? Math.min(...item.opcoes.map(o => parseFloat(o.preco||0))) : parseFloat(item.preco || 0);
+    const foto = getPrimeiraFoto(item);
+    return `
     <div class="bs-card">
       <div class="bs-thumb">
         <div class="bs-rank">${i+1}</div>
-        ${item.foto_url ? `<img src="${item.foto_url}" alt="${item.nome}">` : "🍽️"}
-        <button class="bs-add" data-add="${item.id}" aria-label="Adicionar ${item.nome}">+</button>
+        ${foto ? `<img src="${foto}" alt="${escHtml(item.nome)}" loading="lazy">` : "🍽️"}
+        <button class="bs-add" data-${temVariacao ? "variation" : "add"}="${item.id}" aria-label="Adicionar ${escHtml(item.nome)}">+</button>
       </div>
       <div class="bs-info">
-        <h4>${item.nome}</h4>
-        <span class="bs-price">${money(parseFloat(item.preco || 0))}</span>
+        <h4>${escHtml(item.nome)}</h4>
+        <span class="bs-price">${temVariacao ? "A partir de " : ""}${money(preco)}</span>
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 
   gsap.to(scroll.querySelectorAll(".bs-card"), {
     opacity:1, y:0, duration:.5, stagger:.07, ease:"power2.out", delay:.2
@@ -1266,11 +1464,83 @@ function renderBestsellers(items){
   scroll.querySelectorAll("[data-add]").forEach(btn => {
     btn.addEventListener("click", e => { e.stopPropagation(); addToCart(btn.dataset.add, e); });
   });
+  scroll.querySelectorAll("[data-variation]").forEach(btn => {
+    btn.addEventListener("click", e => { e.stopPropagation(); openVariationPicker(btn.dataset.variation, e); });
+  });
 }
 
 /* ============================================================
    CART LOGIC
    ============================================================ */
+/* ============================================================
+   VARIAÇÕES (opcoes) — itens com tamanho/sabor diferente de preço.
+   Abre um mini-seletor e adiciona ao carrinho com o preço certo.
+   ============================================================ */
+function openVariationPicker(itemId, evt){
+  const item = MENU.find(i => String(i.id) === String(itemId));
+  if(!item) return;
+  const opcoes = Array.isArray(item.opcoes) ? item.opcoes : [];
+  if(opcoes.length === 0) return addToCart(itemId, evt);
+
+  document.getElementById("variationModal")?.remove();
+
+  const wrap = document.createElement("div");
+  wrap.id = "variationModal";
+  wrap.className = "variation-backdrop";
+  wrap.innerHTML = `
+    <div class="variation-panel">
+      <div class="variation-head">
+        <h3>${escHtml(item.nome)}</h3>
+        <button class="variation-close" id="variationCloseBtn" aria-label="Fechar">✕</button>
+      </div>
+      ${item.descricao ? `<p class="variation-desc">${escHtml(item.descricao)}</p>` : ""}
+      <div class="variation-options" id="variationOptions">
+        ${opcoes.map((op, i) => `
+          <button class="variation-opt${i === 0 ? " selected" : ""}" data-idx="${i}">
+            <span>${escHtml(op.nome)}</span>
+            <span class="variation-opt-price">${money(parseFloat(op.preco || 0))}</span>
+          </button>
+        `).join("")}
+      </div>
+      <button class="checkout-btn" id="variationAddBtn">Adicionar</button>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+
+  let selectedIdx = 0;
+  wrap.querySelectorAll(".variation-opt").forEach(btn => {
+    btn.onclick = () => {
+      wrap.querySelectorAll(".variation-opt").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      selectedIdx = Number(btn.dataset.idx);
+    };
+  });
+  wrap.querySelector("#variationCloseBtn").onclick = () => closeVariationPicker(wrap);
+  wrap.addEventListener("click", e => { if(e.target === wrap) closeVariationPicker(wrap); });
+  wrap.querySelector("#variationAddBtn").onclick = (e) => {
+    addVariationToCart(item, opcoes[selectedIdx]);
+    closeVariationPicker(wrap);
+    flyToCart(evt?.currentTarget || wrap.querySelector("#variationAddBtn"));
+  };
+
+  gsap.fromTo(wrap, { opacity:0 }, { opacity:1, duration:.25 });
+  gsap.fromTo(wrap.querySelector(".variation-panel"), { y:40, opacity:0 }, { y:0, opacity:1, duration:.4, ease:"power2.out" });
+}
+
+function closeVariationPicker(wrap){
+  gsap.to(wrap.querySelector(".variation-panel"), { y:40, opacity:0, duration:.25, ease:"power2.in" });
+  gsap.to(wrap, { opacity:0, duration:.25, onComplete: () => wrap.remove() });
+}
+
+function addVariationToCart(item, opcao){
+  const cartId = `${item.id}__${opcao.nome}`;
+  const nomeCompleto = `${item.nome} — ${opcao.nome}`;
+  const existing = CART.find(c => c.id === cartId);
+  if(existing){ existing.qty++; }
+  else{ CART.push({ id:cartId, nome:nomeCompleto, preco:parseFloat(opcao.preco || 0), qty:1 }); }
+  updateCartUI();
+}
+
 function addToCart(id, evt){
   const item = MENU.find(i => String(i.id) === String(id));
   if(!item) return;
@@ -1492,10 +1762,16 @@ function buildEndereco(v){
 
 function basePayload(v, extra){
   return {
-    restaurant_id: CONFIG.RESTAURANT_ID,
+    restaurant_id: RESTAURANT_ID,
     client_name: v.nome,
     client_phone: v.telefone,
-    items: CART.map(c => ({ name:c.nome, quantity:c.qty, price:c.preco })),
+    // manda nos dois formatos (name/qty/price E nome/quantidade/preco)
+    // porque é assim que o backend e a rota de impressão leem os itens
+    itens: CART.map(c => ({
+      name:c.nome, nome:c.nome,
+      qty:c.qty, quantidade:c.qty,
+      price:c.preco, preco:c.preco
+    })),
     total_price: cartTotal(),
     origin: "cardapio_delivery",
     ...(CURRENT_ORDER_ID ? { order_id: CURRENT_ORDER_ID } : {}),
