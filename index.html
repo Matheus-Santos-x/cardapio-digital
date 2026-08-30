@@ -1104,7 +1104,9 @@
 
    Como o cardápio de mesa, esse aqui descobre sozinho de qual
    restaurante se trata pelo DOMÍNIO que a pessoa está acessando
-   (rota GET /api/v1/dominio-cardapio/:dominio no seu backend).
+   (rota GET /api/v1/dominio-delivery/:dominio no seu backend,
+   que busca pelo campo cardapio_delivery_url — diferente do
+   cardapio_url usado pelo cardápio de mesa).
 
    Ou seja: depois de hospedar esse arquivo no domínio de delivery
    que o restaurante cadastrar (campo cardapio_delivery_url em
@@ -1151,12 +1153,12 @@ let SELECTED_PAY = null;
    ============================================================ */
 
 /* Resolve o restaurant_id pelo domínio atual — mesma rota que
-   o cardápio de mesa usa (/api/v1/dominio-cardapio/:dominio) */
+   o cardápio de delivery usa (/api/v1/dominio-delivery/:dominio) */
 async function resolveRestaurantId(){
   if(RESTAURANT_ID) return RESTAURANT_ID; // já veio via ?r= (modo teste)
   try{
     const dominio = window.location.hostname;
-    const resp = await fetch(`${CONFIG.API_BASE}/api/v1/dominio-cardapio/${dominio}`);
+    const resp = await fetch(`${CONFIG.API_BASE}/api/v1/dominio-delivery/${dominio}`);
     if(!resp.ok) return null;
     const data = await resp.json();
     return data.restaurant_id || null;
