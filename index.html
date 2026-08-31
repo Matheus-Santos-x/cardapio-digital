@@ -650,6 +650,7 @@
     transform:translateY(100%);
     padding:6px 20px calc(26px + env(safe-area-inset-bottom));
     box-shadow:0 -20px 60px rgba(0,0,0,.5);
+    transition:bottom .18s ease;
   }
   .sheet-handle{
     width:40px; height:4px; border-radius:2px;
@@ -861,6 +862,7 @@
     display:flex;
     flex-direction:column;
     overflow:hidden;
+    transition:bottom .18s ease, height .18s ease;
   }
   .ai-modal-head{
     display:flex; align-items:center; gap:10px;
@@ -2165,6 +2167,42 @@ aiSendBtn.onclick = sendAiMessage;
 aiInputEl.addEventListener("keydown", e => {
   if(e.key === "Enter") sendAiMessage();
 });
+
+/* ============================================================
+   TECLADO MOBILE — o bug: quando o teclado abre, o navegador
+   desloca a "área visível" da tela, mas painéis fixos (bottom:0)
+   não acompanham direito e a tela inteira parece "pular" pra
+   cima. Aqui a gente escuta a VisualViewport API (a forma certa
+   de saber o quanto o teclado está cobrindo) e reposiciona o
+   painel pra ficar coladinho acima do teclado — estilo WhatsApp,
+   compactando em vez de deslocar a tela toda.
+   ============================================================ */
+function bindKeyboardAwarePanel(panel, opts = {}){
+  if(!window.visualViewport || !panel) return;
+  const vv = window.visualViewport;
+  const baseBottom = parseFloat(getComputedStyle(panel).bottom) || 0;
+
+  function sync(){
+    const keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    panel.style.bottom = (baseBottom + keyboardInset) + "px";
+
+    if(opts.maxHeightWhenOpen){
+      panel.style.height = keyboardInset > 60
+        ? Math.min(opts.maxHeightWhenOpen, vv.height - 24) + "px"
+        : "";
+    }
+    if(opts.onSync) opts.onSync(keyboardInset);
+  }
+  vv.addEventListener("resize", sync);
+  vv.addEventListener("scroll", sync);
+  sync();
+}
+
+bindKeyboardAwarePanel(aiModal, {
+  maxHeightWhenOpen: 520,
+  onSync: () => { aiMessagesEl.scrollTop = aiMessagesEl.scrollHeight; }
+});
+bindKeyboardAwarePanel(sheet);
 
 document.getElementById("aiBubbleBtn").onclick = () => {
   hideAiTooltip();
