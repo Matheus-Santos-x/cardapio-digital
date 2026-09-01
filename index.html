@@ -414,10 +414,11 @@
     line-height:1.4;
   }
 
-  /* ================= AI BUBBLE (flutuante, discreta) ================= */
+  /* ================= AI BUBBLE (flutuante, arrastável) ================= */
   .ai-bubble{
     position:fixed;
-    top:18px; right:18px;
+    top:58%; right:10px;
+    transform:translateY(-50%);
     z-index:60;
     width:42px; height:42px;
     border-radius:50%;
@@ -426,10 +427,13 @@
     display:flex; align-items:center; justify-content:center;
     font-size:16px;
     box-shadow:0 6px 16px -4px rgba(0,0,0,.5);
-    transition:border-color .2s ease, transform .15s ease;
+    transition:border-color .2s ease, box-shadow .2s ease, left .25s cubic-bezier(.2,.9,.3,1.3), right .25s cubic-bezier(.2,.9,.3,1.3);
+    touch-action:none;
+    cursor:grab;
+    user-select:none;
   }
-  .ai-bubble:hover{border-color:var(--red-dim); transform:scale(1.05);}
-  .ai-bubble:active{transform:scale(.92);}
+  .ai-bubble:hover{border-color:var(--red-dim);}
+  .ai-bubble.dragging{cursor:grabbing; box-shadow:0 10px 26px -4px rgba(0,0,0,.6); transition:none;}
   .ai-bubble::after{
     content:'';
     position:absolute; top:-2px; right:-2px;
@@ -441,7 +445,6 @@
 
   .ai-tooltip{
     position:fixed;
-    top:68px; right:18px;
     z-index:59;
     width:196px;
     background:var(--surface);
@@ -450,17 +453,8 @@
     padding:12px 26px 12px 14px;
     box-shadow:0 14px 30px -8px rgba(0,0,0,.55);
     opacity:0;
-    transform:translateY(-10px) scale(.94);
+    transform:scale(.94);
     pointer-events:none;
-  }
-  .ai-tooltip::before{
-    content:'';
-    position:absolute; top:-6px; right:16px;
-    width:11px; height:11px;
-    background:var(--surface);
-    border-left:1px solid var(--line);
-    border-top:1px solid var(--line);
-    transform:rotate(45deg);
   }
   .ai-tooltip p{
     font-size:12.5px;
@@ -785,47 +779,116 @@
     margin-bottom:24px;
   }
 
-  /* ================= VARIATION PICKER (opcoes) ================= */
-  .variation-backdrop{
+  /* ================= ITEM DETAIL (popup com foto ao clicar) ================= */
+  .detail-backdrop{
     position:fixed; inset:0;
-    background:rgba(0,0,0,.6);
+    background:rgba(0,0,0,.65);
     backdrop-filter:blur(3px);
     z-index:150;
-    display:flex; align-items:flex-end; justify-content:center;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
     opacity:0;
   }
-  .variation-panel{
-    width:100%; max-width:480px;
+  .detail-panel{
+    width:100%; max-width:440px;
+    max-height:88vh;
+    overflow-y:auto;
     background:#141210;
-    border-radius:20px 20px 0 0;
-    padding:20px 20px calc(20px + env(safe-area-inset-bottom));
-    box-shadow:0 -20px 60px rgba(0,0,0,.5);
+    border-radius:20px;
+    box-shadow:0 30px 70px rgba(0,0,0,.55);
+    transform:scale(.9);
   }
-  .variation-head{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:12px;
-    margin-bottom:6px;
-  }
-  .variation-head h3{
-    font-family:var(--font-display);
-    font-size:16px;
-    text-transform:uppercase;
-  }
-  .variation-close{
-    width:28px; height:28px; border-radius:8px;
-    background:var(--surface);
-    display:flex; align-items:center; justify-content:center;
-    font-size:13px; color:var(--muted);
+  .detail-photo-wrap{
+    position:relative;
+    width:100%; height:230px;
+    overflow:hidden;
+    background:var(--surface-2);
     flex-shrink:0;
   }
-  .variation-desc{
-    font-size:12.5px; color:var(--muted);
-    line-height:1.5;
-    margin-bottom:16px;
+  .detail-photo-empty{
+    display:flex; align-items:center; justify-content:center;
+    font-size:44px;
+    opacity:.5;
   }
+  .detail-photo-track{
+    display:flex;
+    height:100%;
+    transition:transform .3s ease;
+  }
+  .detail-photo-track img{
+    min-width:100%; height:100%;
+    object-fit:cover;
+    flex-shrink:0;
+  }
+  .detail-photo-nav{
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:32px; height:32px; border-radius:50%;
+    background:rgba(0,0,0,.5);
+    color:#fff;
+    font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .detail-photo-nav.prev{ left:10px; }
+  .detail-photo-nav.next{ right:10px; }
+  .detail-photo-dots{
+    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+    display:flex; gap:6px;
+  }
+  .detail-dot{
+    width:6px; height:6px; border-radius:50%;
+    background:rgba(255,255,255,.4);
+    cursor:pointer;
+    transition:background .2s ease, transform .2s ease;
+  }
+  .detail-dot.active{ background:#fff; transform:scale(1.2); }
+  .detail-close{
+    position:absolute; top:10px; right:10px;
+    width:30px; height:30px; border-radius:50%;
+    background:rgba(0,0,0,.55);
+    backdrop-filter:blur(2px);
+    color:#fff;
+    font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+    z-index:2;
+  }
+  .detail-body{ padding:20px; }
+  .detail-body h2{
+    font-family:var(--font-display);
+    font-size:20px;
+    line-height:1.2;
+    margin-bottom:8px;
+  }
+  .detail-cat{
+    display:inline-block;
+    font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.04em;
+    color:var(--muted);
+    background:var(--surface);
+    border:1px solid var(--line);
+    padding:4px 10px;
+    border-radius:100px;
+    margin-bottom:12px;
+  }
+  .detail-desc{
+    font-size:13.5px; color:var(--muted);
+    line-height:1.55;
+  }
+  .detail-footer{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:14px;
+    margin-top:20px;
+  }
+  .detail-price{
+    font-family:var(--font-mono);
+    font-size:19px; font-weight:700;
+    color:var(--red-glow);
+    flex-shrink:0;
+  }
+  .detail-footer .checkout-btn{ flex:1; }
+
   .variation-options{
     display:flex; flex-direction:column; gap:8px;
-    margin-bottom:18px;
+    margin-top:16px;
   }
   .variation-opt{
     display:flex; align-items:center; justify-content:space-between;
@@ -1032,7 +1095,7 @@
 
 <div class="ai-tooltip" id="aiTooltip">
   <button class="ai-tooltip-close" id="aiTooltipClose" aria-label="Fechar">✕</button>
-  <p>Não sabe o que pedir? <strong>Fale com nossa IA</strong></p>
+  <p>Não sabe o que pedir? <strong>Converse com nosso assistente de IA</strong></p>
 </div>
 
 <header>
@@ -1502,11 +1565,14 @@ function renderMenu(){
     opacity:1, y:0, duration:.55, ease:"power2.out", stagger:.08, delay:.1
   });
 
+  document.querySelectorAll(".item-card").forEach(card => {
+    card.addEventListener("click", () => openItemDetail(card.dataset.id));
+  });
   document.querySelectorAll("[data-add]").forEach(btn => {
-    btn.addEventListener("click", e => addToCart(btn.dataset.add, e));
+    btn.addEventListener("click", e => { e.stopPropagation(); addToCart(btn.dataset.add, e); });
   });
   document.querySelectorAll("[data-variation]").forEach(btn => {
-    btn.addEventListener("click", e => openVariationPicker(btn.dataset.variation, e));
+    btn.addEventListener("click", e => { e.stopPropagation(); openItemDetail(btn.dataset.variation); });
   });
 
   setupScrollSpy();
@@ -1602,7 +1668,7 @@ function renderBestsellers(items){
     const preco = temVariacao ? Math.min(...item.opcoes.map(o => parseFloat(o.preco||0))) : parseFloat(item.preco || 0);
     const foto = getPrimeiraFoto(item);
     return `
-    <div class="bs-card">
+    <div class="bs-card" data-id="${item.id}">
       <div class="bs-thumb">
         <div class="bs-rank">${i+1}</div>
         ${foto ? `<img src="${foto}" alt="${escHtml(item.nome)}" loading="lazy">` : "🍽️"}
@@ -1620,11 +1686,14 @@ function renderBestsellers(items){
     opacity:1, y:0, duration:.5, stagger:.07, ease:"power2.out", delay:.2
   });
 
+  scroll.querySelectorAll(".bs-card").forEach(card => {
+    card.addEventListener("click", () => openItemDetail(card.dataset.id));
+  });
   scroll.querySelectorAll("[data-add]").forEach(btn => {
     btn.addEventListener("click", e => { e.stopPropagation(); addToCart(btn.dataset.add, e); });
   });
   scroll.querySelectorAll("[data-variation]").forEach(btn => {
-    btn.addEventListener("click", e => { e.stopPropagation(); openVariationPicker(btn.dataset.variation, e); });
+    btn.addEventListener("click", e => { e.stopPropagation(); openItemDetail(btn.dataset.variation); });
   });
 }
 
@@ -1632,62 +1701,108 @@ function renderBestsellers(items){
    CART LOGIC
    ============================================================ */
 /* ============================================================
-   VARIAÇÕES (opcoes) — itens com tamanho/sabor diferente de preço.
-   Abre um mini-seletor e adiciona ao carrinho com o preço certo.
+   DETALHE DO ITEM — clicar em qualquer item do cardápio abre um
+   popup com zoom na foto, nome, descrição e (se tiver) as opções
+   de variação, igual o cardápio de mesa.
    ============================================================ */
-function openVariationPicker(itemId, evt){
+function openItemDetail(itemId){
   const item = MENU.find(i => String(i.id) === String(itemId));
   if(!item) return;
-  const opcoes = Array.isArray(item.opcoes) ? item.opcoes : [];
-  if(opcoes.length === 0) return addToCart(itemId, evt);
 
-  document.getElementById("variationModal")?.remove();
+  document.getElementById("itemDetailModal")?.remove();
+
+  const fotos = getFotos(item);
+  const opcoes = Array.isArray(item.opcoes) ? item.opcoes : [];
+  const temVariacao = opcoes.length > 0;
+  let selectedIdx = 0;
+  let fotoIdx = 0;
 
   const wrap = document.createElement("div");
-  wrap.id = "variationModal";
-  wrap.className = "variation-backdrop";
+  wrap.id = "itemDetailModal";
+  wrap.className = "detail-backdrop";
   wrap.innerHTML = `
-    <div class="variation-panel">
-      <div class="variation-head">
-        <h3>${escHtml(item.nome)}</h3>
-        <button class="variation-close" id="variationCloseBtn" aria-label="Fechar">✕</button>
+    <div class="detail-panel">
+      <div class="detail-photo-wrap${fotos.length === 0 ? " detail-photo-empty" : ""}">
+        ${fotos.length > 0 ? `
+          <div class="detail-photo-track" id="detailPhotoTrack">
+            ${fotos.map(url => `<img src="${url}" alt="${escHtml(item.nome)}">`).join("")}
+          </div>
+          ${fotos.length > 1 ? `
+          <button class="detail-photo-nav prev" id="detailPhotoPrev" aria-label="Foto anterior">‹</button>
+          <button class="detail-photo-nav next" id="detailPhotoNext" aria-label="Próxima foto">›</button>
+          <div class="detail-photo-dots" id="detailPhotoDots">
+            ${fotos.map((_, i) => `<span class="detail-dot${i === 0 ? " active" : ""}" data-idx="${i}"></span>`).join("")}
+          </div>` : ""}
+        ` : `<span>🍽️</span>`}
+        <button class="detail-close" id="detailCloseBtn" aria-label="Fechar">✕</button>
       </div>
-      ${item.descricao ? `<p class="variation-desc">${escHtml(item.descricao)}</p>` : ""}
-      <div class="variation-options" id="variationOptions">
-        ${opcoes.map((op, i) => `
-          <button class="variation-opt${i === 0 ? " selected" : ""}" data-idx="${i}">
-            <span>${escHtml(op.nome)}</span>
-            <span class="variation-opt-price">${money(parseFloat(op.preco || 0))}</span>
-          </button>
-        `).join("")}
+      <div class="detail-body">
+        <h2>${escHtml(item.nome)}</h2>
+        <div class="detail-cat">${escHtml(item.categoria || "Geral")}</div>
+        ${item.descricao ? `<p class="detail-desc">${escHtml(item.descricao)}</p>` : ""}
+        ${temVariacao ? `
+        <div class="variation-options" id="detailVariationOptions">
+          ${opcoes.map((op, i) => `
+            <button class="variation-opt${i === 0 ? " selected" : ""}" data-idx="${i}">
+              <span>${escHtml(op.nome)}</span>
+              <span class="variation-opt-price">${money(parseFloat(op.preco || 0))}</span>
+            </button>
+          `).join("")}
+        </div>` : ""}
+        <div class="detail-footer">
+          <span class="detail-price" id="detailPrice">${money(temVariacao ? parseFloat(opcoes[0].preco || 0) : parseFloat(item.preco || 0))}</span>
+          <button class="checkout-btn" id="detailAddBtn">Adicionar</button>
+        </div>
       </div>
-      <button class="checkout-btn" id="variationAddBtn">Adicionar</button>
     </div>
   `;
   document.body.appendChild(wrap);
 
-  let selectedIdx = 0;
+  // navegação de fotos (se tiver mais de uma)
+  function irParaFoto(i){
+    fotoIdx = i;
+    const track = document.getElementById("detailPhotoTrack");
+    if(track) track.style.transform = `translateX(-${i * 100}%)`;
+    document.querySelectorAll(".detail-dot").forEach((d, idx) => d.classList.toggle("active", idx === i));
+  }
+  document.getElementById("detailPhotoNext")?.addEventListener("click", () => irParaFoto((fotoIdx + 1) % fotos.length));
+  document.getElementById("detailPhotoPrev")?.addEventListener("click", () => irParaFoto((fotoIdx - 1 + fotos.length) % fotos.length));
+  document.querySelectorAll(".detail-dot").forEach(dot => {
+    dot.addEventListener("click", () => irParaFoto(Number(dot.dataset.idx)));
+  });
+
+  // seleção de variação (se tiver)
   wrap.querySelectorAll(".variation-opt").forEach(btn => {
     btn.onclick = () => {
       wrap.querySelectorAll(".variation-opt").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
       selectedIdx = Number(btn.dataset.idx);
+      document.getElementById("detailPrice").textContent = money(parseFloat(opcoes[selectedIdx].preco || 0));
     };
   });
-  wrap.querySelector("#variationCloseBtn").onclick = () => closeVariationPicker(wrap);
-  wrap.addEventListener("click", e => { if(e.target === wrap) closeVariationPicker(wrap); });
-  wrap.querySelector("#variationAddBtn").onclick = (e) => {
-    addVariationToCart(item, opcoes[selectedIdx]);
-    closeVariationPicker(wrap);
-    flyToCart(evt?.currentTarget || wrap.querySelector("#variationAddBtn"));
+
+  document.getElementById("detailCloseBtn").onclick = () => closeItemDetail(wrap);
+  wrap.addEventListener("click", e => { if(e.target === wrap) closeItemDetail(wrap); });
+
+  document.getElementById("detailAddBtn").onclick = (e) => {
+    if(temVariacao){
+      addVariationToCart(item, opcoes[selectedIdx]);
+    }else{
+      const existing = CART.find(c => String(c.id) === String(item.id));
+      if(existing){ existing.qty++; }
+      else{ CART.push({ id:item.id, nome:item.nome, preco:parseFloat(item.preco || 0), qty:1 }); }
+      updateCartUI();
+    }
+    flyToCart(e.currentTarget);
+    closeItemDetail(wrap);
   };
 
   gsap.fromTo(wrap, { opacity:0 }, { opacity:1, duration:.25 });
-  gsap.fromTo(wrap.querySelector(".variation-panel"), { y:40, opacity:0 }, { y:0, opacity:1, duration:.4, ease:"power2.out" });
+  gsap.fromTo(wrap.querySelector(".detail-panel"), { scale:.9, opacity:0 }, { scale:1, opacity:1, duration:.35, ease:"back.out(1.4)" });
 }
 
-function closeVariationPicker(wrap){
-  gsap.to(wrap.querySelector(".variation-panel"), { y:40, opacity:0, duration:.25, ease:"power2.in" });
+function closeItemDetail(wrap){
+  gsap.to(wrap.querySelector(".detail-panel"), { scale:.92, opacity:0, duration:.22, ease:"power2.in" });
   gsap.to(wrap, { opacity:0, duration:.25, onComplete: () => wrap.remove() });
 }
 
@@ -2049,28 +2164,62 @@ function showSuccess(result){
    ============================================================ */
 const aiModal = document.getElementById("aiModal");
 const aiTooltip = document.getElementById("aiTooltip");
-const AI_HINT_KEY = "fluxon_ai_hint_seen";
+const aiBubble = document.getElementById("aiBubbleBtn");
 const aiMessagesEl = document.getElementById("aiChatMessages");
 const aiInputEl = document.getElementById("aiChatInput");
 const aiSendBtn = document.getElementById("aiChatSendBtn");
+const AI_BUBBLE_POS_KEY = "fluxon_ai_bubble_pos";
 
 let AI_HISTORY = [];   // guardado só na memória do navegador — "memória" da conversa
 let AI_LOADING = false;
 let AI_STARTED = false; // controla a mensagem de boas-vindas (só aparece 1x por sessão)
 
+/* ---- travar/destravar o fundo enquanto o chat está aberto ---- */
+let _scrollLockY = 0;
+function lockBodyScroll(){
+  _scrollLockY = window.scrollY;
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${_scrollLockY}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
+  document.body.style.width = "100%";
+}
+function unlockBodyScroll(){
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  document.body.style.width = "";
+  window.scrollTo(0, _scrollLockY);
+}
+
+/* ---- balãozinho de dica — aparece toda vez que a página carrega,
+   posicionado relativo à bolinha (que pode estar em qualquer canto) ---- */
+function positionAiTooltip(){
+  const rect = aiBubble.getBoundingClientRect();
+  const onRight = rect.left > window.innerWidth / 2;
+  aiTooltip.style.top = Math.max(10, rect.top - 4) + "px";
+  if(onRight){
+    aiTooltip.style.right = (window.innerWidth - rect.left + 10) + "px";
+    aiTooltip.style.left = "auto";
+  }else{
+    aiTooltip.style.left = (rect.right + 10) + "px";
+    aiTooltip.style.right = "auto";
+  }
+}
+
 function hideAiTooltip(){
   gsap.to(aiTooltip, {
-    opacity:0, y:-10, scale:.94, duration:.3, ease:"power2.in",
+    opacity:0, scale:.94, duration:.3, ease:"power2.in",
     onComplete: () => { aiTooltip.style.pointerEvents = "none"; }
   });
 }
 
 function maybeShowAiTooltip(){
-  if(localStorage.getItem(AI_HINT_KEY)) return; // já viu antes, não repete
   setTimeout(() => {
+    positionAiTooltip();
     aiTooltip.style.pointerEvents = "auto";
-    gsap.to(aiTooltip, { opacity:1, y:0, scale:1, duration:.55, ease:"back.out(1.7)" });
-    localStorage.setItem(AI_HINT_KEY, "1");
+    gsap.to(aiTooltip, { opacity:1, scale:1, duration:.55, ease:"back.out(1.7)" });
     setTimeout(hideAiTooltip, 7000); // some sozinho depois de um tempo
   }, 1500);
 }
@@ -2118,6 +2267,12 @@ function appendSuggestedItems(itens){
   });
 }
 
+// manda o carrinho atual junto — é isso que deixa a IA sugerir
+// complementos (bebida, sobremesa etc) em vez de sugestões soltas
+function carrinhoParaIA(){
+  return CART.map(c => ({ nome:c.nome, qty:c.qty }));
+}
+
 async function sendAiMessage(){
   const texto = aiInputEl.value.trim();
   if(!texto || AI_LOADING) return;
@@ -2126,7 +2281,6 @@ async function sendAiMessage(){
   AI_HISTORY.push({ role:"user", content:texto });
 
   if(IS_DEMO){
-    // sem backend real conectado ainda — avisa em vez de chamar a API
     appendChatMessage("assistant", "No preview essa parte fica desligada. Assim que o cardápio estiver publicado com o restaurante real, eu já respondo com base no cardápio dele 🙂");
     return;
   }
@@ -2142,7 +2296,8 @@ async function sendAiMessage(){
       body: JSON.stringify({
         restaurant_id: RESTAURANT_ID,
         mensagem: texto,
-        historico: AI_HISTORY.slice(0, -1).slice(-6) // últimas trocas, sem repetir a msg atual
+        historico: AI_HISTORY.slice(0, -1).slice(-6),
+        carrinho: carrinhoParaIA()
       })
     });
     const data = await res.json();
@@ -2160,6 +2315,36 @@ async function sendAiMessage(){
   }finally{
     AI_LOADING = false;
     aiSendBtn.disabled = false;
+  }
+}
+
+// disparada sozinha ao abrir o chat, SE já tiver item no carrinho —
+// pede pra IA sugerir complementos com base no que já foi escolhido
+async function sendAiAutoSuggestion(){
+  const typingBubble = appendTypingIndicator();
+  try{
+    const res = await fetch(`${CONFIG.API_BASE}/api/v1/ia/sugestao`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        restaurant_id: RESTAURANT_ID,
+        mensagem: "__sugestao_automatica__",
+        historico: [],
+        carrinho: carrinhoParaIA()
+      })
+    });
+    const data = await res.json();
+    typingBubble.remove();
+    if(!res.ok) throw new Error(data.error || "Erro");
+
+    const resposta = data.resposta || "Oi! Vi que você já tem alguns itens no carrinho — quer que eu sugira algo pra completar o pedido?";
+    appendChatMessage("assistant", resposta);
+    AI_HISTORY.push({ role:"assistant", content:resposta });
+    appendSuggestedItems(data.itens);
+  }catch(err){
+    console.error("Erro na sugestão automática:", err);
+    typingBubble.remove();
+    appendChatMessage("assistant", "Oi! Me conta o que você tá com vontade de comer que eu já sugiro algo do cardápio 🍽️");
   }
 }
 
@@ -2204,21 +2389,107 @@ bindKeyboardAwarePanel(aiModal, {
 });
 bindKeyboardAwarePanel(sheet);
 
-document.getElementById("aiBubbleBtn").onclick = () => {
+function openAiChat(){
   hideAiTooltip();
+  lockBodyScroll();
   aiModal.style.pointerEvents = "auto";
   gsap.to(aiModal, { opacity:1, y:0, duration:.4, ease:"back.out(1.6)" });
 
   if(!AI_STARTED){
     AI_STARTED = true;
-    setTimeout(() => appendChatMessage("assistant", "Oi! Me conta o que você tá com vontade de comer que eu já sugiro algo do cardápio 🍽️"), 300);
+    if(CART.length > 0 && !IS_DEMO){
+      setTimeout(sendAiAutoSuggestion, 350);
+    }else{
+      setTimeout(() => appendChatMessage("assistant", "Oi! Me conta o que você tá com vontade de comer que eu já sugiro algo do cardápio 🍽️"), 300);
+    }
   }
   setTimeout(() => aiInputEl.focus(), 450);
-};
-document.getElementById("aiModalClose").onclick = () => {
+}
+function closeAiChat(){
   gsap.to(aiModal, { opacity:0, y:30, duration:.3, onComplete:() => aiModal.style.pointerEvents = "none" });
-};
+  unlockBodyScroll();
+}
+document.getElementById("aiModalClose").onclick = closeAiChat;
 document.getElementById("aiTooltipClose").onclick = hideAiTooltip;
+
+/* ============================================================
+   BOLINHA ARRASTÁVEL — a pessoa pode arrastar só verticalmente
+   e de um lado pro outro (esquerda/direita); ao soltar, ela gruda
+   ("ímã") na borda mais próxima. Não dá pra deixar solta no meio.
+   ============================================================ */
+(function setupDraggableBubble(){
+  let dragging = false;
+  let moved = false;
+  let startX = 0, startY = 0, startTop = 0;
+
+  function clampTop(top){
+    return Math.min(Math.max(top, 80), window.innerHeight - 90);
+  }
+
+  function restorePosition(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(AI_BUBBLE_POS_KEY) || "null");
+      if(!saved) return;
+      aiBubble.style.transform = "none";
+      aiBubble.style.top = clampTop(saved.top) + "px";
+      if(saved.side === "left"){ aiBubble.style.left = "10px"; aiBubble.style.right = "auto"; }
+      else{ aiBubble.style.right = "10px"; aiBubble.style.left = "auto"; }
+    }catch{}
+  }
+
+  function savePosition(){
+    const rect = aiBubble.getBoundingClientRect();
+    const side = rect.left + rect.width/2 > window.innerWidth/2 ? "right" : "left";
+    localStorage.setItem(AI_BUBBLE_POS_KEY, JSON.stringify({ top:rect.top, side }));
+  }
+
+  aiBubble.addEventListener("pointerdown", e => {
+    dragging = true;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    startTop = aiBubble.getBoundingClientRect().top;
+    aiBubble.setPointerCapture(e.pointerId);
+    aiBubble.classList.add("dragging");
+  });
+
+  aiBubble.addEventListener("pointermove", e => {
+    if(!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if(Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
+    if(!moved) return;
+
+    aiBubble.style.transform = "none";
+    aiBubble.style.top = clampTop(startTop + dy) + "px";
+    const left = Math.min(Math.max(e.clientX - 21, 4), window.innerWidth - 46);
+    aiBubble.style.left = left + "px";
+    aiBubble.style.right = "auto";
+  });
+
+  function endDrag(){
+    if(!dragging) return;
+    dragging = false;
+    aiBubble.classList.remove("dragging");
+    if(moved){
+      const rect = aiBubble.getBoundingClientRect();
+      const goRight = rect.left + rect.width/2 > window.innerWidth/2;
+      aiBubble.style.left = "auto";
+      aiBubble.style.right = goRight ? "10px" : "auto";
+      if(!goRight){ aiBubble.style.left = "10px"; }
+      savePosition();
+    }
+  }
+  aiBubble.addEventListener("pointerup", endDrag);
+  aiBubble.addEventListener("pointercancel", endDrag);
+
+  aiBubble.addEventListener("click", e => {
+    if(moved){ e.preventDefault(); e.stopPropagation(); moved = false; return; }
+    openAiChat();
+  });
+
+  restorePosition();
+})();
 
 /* ============================================================
    INIT
