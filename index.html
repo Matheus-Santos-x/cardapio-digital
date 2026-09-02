@@ -2178,18 +2178,20 @@ let AI_STARTED = false; // controla a mensagem de boas-vindas (só aparece 1x po
 let _scrollLockY = 0;
 function lockBodyScroll(){
   _scrollLockY = window.scrollY;
-  document.body.style.position = "fixed";
-  document.body.style.top = `-${_scrollLockY}px`;
-  document.body.style.left = "0";
-  document.body.style.right = "0";
-  document.body.style.width = "100%";
+  document.documentElement.style.position = "fixed";
+  document.documentElement.style.top = `-${_scrollLockY}px`;
+  document.documentElement.style.left = "0";
+  document.documentElement.style.right = "0";
+  document.documentElement.style.width = "100%";
+  document.documentElement.style.overflow = "hidden";
 }
 function unlockBodyScroll(){
-  document.body.style.position = "";
-  document.body.style.top = "";
-  document.body.style.left = "";
-  document.body.style.right = "";
-  document.body.style.width = "";
+  document.documentElement.style.position = "";
+  document.documentElement.style.top = "";
+  document.documentElement.style.left = "";
+  document.documentElement.style.right = "";
+  document.documentElement.style.width = "";
+  document.documentElement.style.overflow = "";
   window.scrollTo(0, _scrollLockY);
 }
 
