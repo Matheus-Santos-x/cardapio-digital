@@ -1591,8 +1591,27 @@ function applyBranding(){
     const initials = (RESTAURANT_CONFIG.nome_exibicao || "R").trim().charAt(0).toUpperCase();
     logoEl.textContent = initials;
   }
+
+   const tema = RESTAURANT_CONFIG.tema || "dark";
+  if(tema === "light"){
+    document.documentElement.style.setProperty("--surface", "#ffffff");
+    document.documentElement.style.setProperty("--surface-2", "#f2ede6");
+    document.documentElement.style.setProperty("--line", "rgba(0,0,0,.1)");
+    document.documentElement.style.setProperty("--text", "#1a1814");
+    document.documentElement.style.setProperty("--muted", "#555555");
+    document.documentElement.style.setProperty("--muted-2", "#8a8a8a");
+  }
+
   if(RESTAURANT_CONFIG.cor_primaria){
     document.documentElement.style.setProperty("--red", RESTAURANT_CONFIG.cor_primaria);
+    document.documentElement.style.setProperty("--red-glow", RESTAURANT_CONFIG.cor_primaria);
+  }
+  if(RESTAURANT_CONFIG.cor_secundaria){
+    document.documentElement.style.setProperty("--red-dim", RESTAURANT_CONFIG.cor_secundaria);
+  }
+  if(RESTAURANT_CONFIG.cor_fundo){
+    document.documentElement.style.setProperty("--bg", RESTAURANT_CONFIG.cor_fundo);
+    document.body.style.background = RESTAURANT_CONFIG.cor_fundo;
   }
 
   // rodapé — Instagram do restaurante (mesmo dado usado na notinha impressa)
