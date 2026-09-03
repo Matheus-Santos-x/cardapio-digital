@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <style>
+  
   /* ================= TOKENS ================= */
   :root{
     --bg:#0a0908;
@@ -142,6 +143,94 @@
     filter:drop-shadow(0 0 4px rgba(255,75,62,.6));
   }
   .ai-hint b{color:var(--red-glow); font-weight:700;}
+
+  /* ================= BANNER + CARTÃO DA LOJA ================= */
+  .banner-wrap{
+    position:relative;
+    width:100%;
+    height:180px;
+    overflow:hidden;
+  }
+  .banner-img{
+    width:100%; height:100%;
+    background:linear-gradient(135deg, var(--red-dim), var(--bg) 75%);
+  }
+
+  .store-card{
+    position:relative;
+    z-index:2;
+    background:#fff;
+    color:#1a1a1a;
+    border-radius:20px 20px 0 0;
+    margin-top:-24px;
+    padding:20px 20px 14px;
+    box-shadow:0 -8px 24px rgba(0,0,0,.25);
+  }
+  .store-card-top{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .store-logo{
+    width:56px; height:56px; border-radius:14px;
+    background:var(--surface-2);
+    border:1px solid #eee;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display);
+    font-size:20px;
+    color:var(--red-glow);
+    flex-shrink:0;
+    overflow:hidden;
+    margin-top:-32px;
+    box-shadow:0 4px 12px rgba(0,0,0,.2);
+  }
+  .store-logo img{width:100%; height:100%; object-fit:cover;}
+  .store-info{flex:1; min-width:0;}
+  .store-status{
+    display:flex; align-items:center; gap:6px;
+    font-size:12.5px; font-weight:700;
+    color:#1a9c4a;
+    margin-bottom:2px;
+  }
+  .store-status.closed{color:#c23b3b;}
+  .status-dot{
+    width:6px; height:6px; border-radius:50%;
+    background:currentColor;
+  }
+  .store-info h1{
+    font-family:var(--font-display);
+    font-size:17px;
+    color:#111;
+    margin-bottom:2px;
+  }
+  .store-address{
+    font-size:12px;
+    color:#8a8a8a;
+    line-height:1.3;
+  }
+  .store-meta-row{
+    display:flex;
+    align-items:center;
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px solid #eee;
+  }
+  .store-meta{flex:1; text-align:center;}
+  .store-meta-divider{width:1px; height:28px; background:#eee;}
+  .meta-label{
+    display:block;
+    font-size:10.5px;
+    color:#9a9a9a;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    margin-bottom:3px;
+  }
+  .meta-value{
+    display:block;
+    font-size:13px;
+    font-weight:700;
+    color:#222;
+  }
 
   /* ================= BESTSELLERS (mais pedidos) ================= */
   .bestsellers{
@@ -1116,16 +1205,35 @@
   <p>Não sabe o que pedir? <strong>Converse com nosso assistente de IA</strong></p>
 </div>
 
-<header>
-  <div class="brand-row">
-    <div class="brand-logo" id="brandLogo">R</div>
-    <div class="brand-text">
-      <div class="eyebrow">Aberto agora</div>
+<div class="banner-wrap">
+  <div class="banner-img" id="bannerImg"></div>
+</div>
+
+<div class="store-card">
+  <div class="store-card-top">
+    <div class="store-logo" id="brandLogo">R</div>
+    <div class="store-info">
+      <div class="store-status" id="storeStatus">
+        <span class="status-dot"></span>
+        <span id="storeStatusText">Carregando horário...</span>
+      </div>
       <h1 id="brandName">Carregando...</h1>
+      <p class="store-address" id="storeAddress"></p>
     </div>
   </div>
-  <p class="hero-sub">Cardápio completo do <strong id="brandNameInline">restaurante</strong>, prontinho pra você pedir sem sair de casa.</p>
-</header>
+
+  <div class="store-meta-row">
+    <div class="store-meta">
+      <span class="meta-label">Entrega</span>
+      <span class="meta-value" id="metaEntrega">—</span>
+    </div>
+    <div class="store-meta-divider"></div>
+    <div class="store-meta">
+      <span class="meta-label">Pedido mínimo</span>
+      <span class="meta-value" id="metaPedidoMinimo">—</span>
+    </div>
+  </div>
+</div>
 
 <section class="bestsellers" id="bestsellersSection" style="display:none;">
   <div class="bs-heading"><span class="flame">🔥</span> Mais pedidos</div>
@@ -1355,8 +1463,9 @@ const DEMO_MENU = [
    ============================================================ */
 let MENU = [];
 let RESTAURANT_CONFIG = {};
-let RESTAURANT_CATEGORIAS = []; // ordem/fotos de categoria vindas de categorias_ordem
-let CART = []; // { id, nome, preco, qty, opcaoNome? }
+let RESTAURANT_CATEGORIAS = [];
+let RESTAURANT_HORARIOS_STATUS = { aberto:false, fechamento_atual:null };
+let CART = [];
 let SELECTED_PAY = null;
 
 /* ============================================================
@@ -1392,9 +1501,10 @@ async function fetchMenu(){
     throw new Error("Não encontramos um restaurante cadastrado para este link. Confira o domínio configurado no backend.");
   }
 
-  const [menuRes, cfgRes] = await Promise.all([
+   const [menuRes, cfgRes, horariosRes] = await Promise.all([
     fetch(`${CONFIG.API_BASE}/api/v1/cardapio/${RESTAURANT_ID}`),
-    fetch(`${CONFIG.API_BASE}/api/v1/restaurante/${RESTAURANT_ID}/config`)
+    fetch(`${CONFIG.API_BASE}/api/v1/restaurante/${RESTAURANT_ID}/config`),
+    fetch(`${CONFIG.API_BASE}/api/v1/restaurante/${RESTAURANT_ID}/horarios`)
   ]);
   if(!menuRes.ok){
     throw new Error(`Não foi possível carregar o cardápio agora (erro ${menuRes.status}). Tente novamente em instantes.`);
@@ -1402,6 +1512,10 @@ async function fetchMenu(){
 
   const menu = await menuRes.json();
   RESTAURANT_CONFIG = cfgRes.ok ? await cfgRes.json() : {};
+  if(horariosRes.ok){
+    const horariosData = await horariosRes.json();
+    RESTAURANT_HORARIOS_STATUS = horariosData.status || RESTAURANT_HORARIOS_STATUS;
+  }
   RESTAURANT_CATEGORIAS = Array.isArray(RESTAURANT_CONFIG?.categorias_ordem) ? RESTAURANT_CONFIG.categorias_ordem : [];
   IS_DEMO = false;
 
@@ -1481,13 +1595,50 @@ function applyBranding(){
   }
 
   // rodapé — Instagram do restaurante (mesmo dado usado na notinha impressa)
-  const igUrl = instagramUrl(RESTAURANT_CONFIG.instagram);
+ const igUrl = instagramUrl(RESTAURANT_CONFIG.instagram);
   const igLink = document.getElementById("footerIgLink");
   if(igUrl){
     igLink.href = igUrl;
     igLink.style.display = "flex";
   }else{
     igLink.style.display = "none";
+  }
+
+  // endereço
+  const addressEl = document.getElementById("storeAddress");
+  if(addressEl) addressEl.textContent = RESTAURANT_CONFIG.endereco || "";
+
+  // pedido mínimo
+  const metaMinimoEl = document.getElementById("metaPedidoMinimo");
+  if(metaMinimoEl){
+    const minimo = parseFloat(RESTAURANT_CONFIG.pedido_minimo || 0);
+    metaMinimoEl.textContent = minimo > 0 ? money(minimo) : "Sem mínimo";
+  }
+
+  // tempo de entrega
+  const metaEntregaEl = document.getElementById("metaEntrega");
+  if(metaEntregaEl){
+    const min = RESTAURANT_CONFIG.tempo_entrega_min;
+    const max = RESTAURANT_CONFIG.tempo_entrega_max;
+    metaEntregaEl.textContent = (min && max) ? `${min}-${max}min` : "A combinar";
+  }
+
+  renderStoreStatus();
+}
+
+function renderStoreStatus(){
+  const wrap = document.getElementById("storeStatus");
+  const textEl = document.getElementById("storeStatusText");
+  if(!wrap || !textEl) return;
+
+  if(RESTAURANT_HORARIOS_STATUS.aberto){
+    wrap.classList.remove("closed");
+    textEl.textContent = RESTAURANT_HORARIOS_STATUS.fechamento_atual
+      ? `Aberto até ${RESTAURANT_HORARIOS_STATUS.fechamento_atual}`
+      : "Aberto agora";
+  }else{
+    wrap.classList.add("closed");
+    textEl.textContent = "Fechado no momento";
   }
 }
 
