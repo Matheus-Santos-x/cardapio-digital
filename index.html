@@ -46,8 +46,8 @@
     content:'';
     position:fixed; inset:0;
     background:
-      radial-gradient(ellipse 600px 400px at 15% -10%, rgba(214,40,40,.14), transparent 60%),
-      radial-gradient(ellipse 500px 500px at 110% 20%, rgba(214,40,40,.08), transparent 60%);
+      radial-gradient(ellipse 600px 400px at 15% -10%, color-mix(in srgb, var(--red) 14%, transparent), transparent 60%),
+      radial-gradient(ellipse 500px 500px at 110% 20%, color-mix(in srgb, var(--red) 8%, transparent), transparent 60%);
     pointer-events:none;
     z-index:0;
   }
@@ -138,9 +138,9 @@
     color:var(--text);
     background:var(--surface-2);
   }
-  .ai-hint .spark{
+.ai-hint .spark{
     font-size:14px;
-    filter:drop-shadow(0 0 4px rgba(255,75,62,.6));
+    filter:drop-shadow(0 0 4px color-mix(in srgb, var(--red-glow) 60%, transparent));
   }
   .ai-hint b{color:var(--red-glow); font-weight:700;}
 
@@ -377,10 +377,10 @@
     position:relative;
     overflow:hidden;
   }
-  .item-card::before{
+   .item-card::before{
     content:'';
     position:absolute; inset:0;
-    background:linear-gradient(100deg, transparent 40%, rgba(214,40,40,.05) 50%, transparent 60%);
+    background:linear-gradient(100deg, transparent 40%, color-mix(in srgb, var(--red) 5%, transparent) 50%, transparent 60%);
     opacity:0;
     transition:opacity .3s ease;
   }
@@ -419,14 +419,14 @@
     font-weight:700;
     color:var(--red-glow);
   }
-  .add-btn{
+    .add-btn{
     width:32px; height:32px; border-radius:9px;
     background:var(--red);
     color:#fff;
     font-size:19px;
     display:flex; align-items:center; justify-content:center;
     flex-shrink:0;
-    box-shadow:0 3px 10px -3px rgba(214,40,40,.7);
+    box-shadow:0 3px 10px -3px color-mix(in srgb, var(--red) 70%, transparent);
     transition:transform .15s ease, background .15s ease;
     position:relative;
   }
@@ -524,12 +524,12 @@
   }
   .ai-bubble:hover{border-color:var(--red-dim);}
   .ai-bubble.dragging{cursor:grabbing; box-shadow:0 10px 26px -4px rgba(0,0,0,.6); transition:none;}
-  .ai-bubble::after{
+ .ai-bubble::after{
     content:'';
     position:absolute; top:-2px; right:-2px;
     width:9px; height:9px; border-radius:50%;
     background:var(--red-glow);
-    box-shadow:0 0 6px 1px rgba(255,75,62,.7);
+    box-shadow:0 0 6px 1px color-mix(in srgb, var(--red-glow) 70%, transparent);
     animation:pulse-dot 2.2s ease-in-out infinite;
   }
 
@@ -565,7 +565,7 @@
     position:fixed;
     width:10px; height:10px; border-radius:50%;
     background:var(--red-glow);
-    box-shadow:0 0 10px 2px rgba(255,75,62,.8);
+    box-shadow:0 0 10px 2px color-mix(in srgb, var(--red-glow) 80%, transparent);
     z-index:200;
     pointer-events:none;
   }
@@ -579,7 +579,7 @@
     border-radius:14px;
     padding:15px 18px;
     display:flex; align-items:center; justify-content:space-between;
-    box-shadow:0 10px 30px -8px rgba(214,40,40,.65), 0 2px 8px rgba(0,0,0,.4);
+  box-shadow:0 10px 30px -8px color-mix(in srgb, var(--red) 65%, transparent), 0 2px 8px rgba(0,0,0,.4);
     transform:translateY(140px);
     opacity:0;
     max-width:520px;
@@ -617,7 +617,7 @@
     position:fixed;
     top:0; right:0; bottom:0;
     width:min(400px, 92vw);
-    background:#141210;
+    background:var(--surface);
     z-index:100;
     display:flex; flex-direction:column;
     transform:translateX(100%);
@@ -707,7 +707,7 @@
     font-size:24px; font-weight:700;
     color:var(--red-glow);
   }
-  .checkout-btn{
+   .checkout-btn{
     width:100%;
     background:var(--red);
     color:#fff;
@@ -717,7 +717,7 @@
     font-size:14.5px;
     text-transform:uppercase;
     letter-spacing:.04em;
-    box-shadow:0 8px 22px -6px rgba(214,40,40,.7);
+    box-shadow:0 8px 22px -6px color-mix(in srgb, var(--red) 70%, transparent);
     transition:transform .15s ease, background .15s ease;
   }
   .checkout-btn:hover{background:var(--red-glow);}
@@ -815,9 +815,9 @@
     cursor:pointer;
     transition:border-color .2s ease, background .2s ease;
   }
-  .pay-opt.selected{
+   .pay-opt.selected{
     border-color:var(--red);
-    background:linear-gradient(90deg, rgba(214,40,40,.12), transparent);
+    background:linear-gradient(90deg, color-mix(in srgb, var(--red) 12%, transparent), transparent);
   }
   .pay-opt .radio{
     width:18px; height:18px; border-radius:50%;
@@ -856,7 +856,7 @@
   }
   .troco-opt.selected{
     border-color:var(--red);
-    background:linear-gradient(90deg, rgba(214,40,40,.14), transparent);
+    background:linear-gradient(90deg, color-mix(in srgb, var(--red) 14%, transparent), transparent);
     color:var(--text);
   }
 
@@ -878,7 +878,7 @@
     display:flex; align-items:center; justify-content:center;
     font-size:28px;
     margin:0 auto 18px;
-    box-shadow:0 0 0 8px rgba(214,40,40,.14);
+    box-shadow:0 0 0 8px color-mix(in srgb, var(--red) 14%, transparent);
   }
   .success-view h2{
     font-family:var(--font-display);
@@ -904,11 +904,11 @@
     padding:20px;
     opacity:0;
   }
-  .detail-panel{
+   .detail-panel{
     width:100%; max-width:440px;
     max-height:88vh;
     overflow-y:auto;
-    background:#141210;
+    background:var(--surface);
     border-radius:20px;
     box-shadow:0 30px 70px rgba(0,0,0,.55);
     transform:scale(.9);
@@ -1016,7 +1016,7 @@
   }
   .variation-opt.selected{
     border-color:var(--red);
-    background:linear-gradient(90deg, rgba(214,40,40,.12), transparent);
+    background:linear-gradient(90deg, color-mix(in srgb, var(--red) 12%, transparent), transparent);
   }
   .variation-opt-price{
     font-family:var(--font-mono);
@@ -1030,7 +1030,7 @@
     transform:translate(-50%, 30px);
     width:min(380px, 92vw);
     height:min(520px, 72vh);
-    background:#141210;
+    background:var(--surface);
     border:1px solid var(--line);
     border-radius:18px;
     z-index:120;
@@ -1464,9 +1464,9 @@ const DEMO_MENU = [
    ============================================================ */
 let MENU = [];
 let RESTAURANT_CONFIG = {};
-let RESTAURANT_CATEGORIAS = [];
+let RESTAURANT_CATEGORIAS = []; 
 let RESTAURANT_HORARIOS_STATUS = { aberto:false, fechamento_atual:null };
-let CART = [];
+let CART = []; 
 let SELECTED_PAY = null;
 
 /* ============================================================
@@ -1582,8 +1582,6 @@ function escHtml(str){
 function applyBranding(){
   const nome = RESTAURANT_CONFIG.nome_exibicao || "restaurante";
   document.getElementById("brandName").textContent = nome;
-  const inline = document.getElementById("brandNameInline");
-  if(inline) inline.textContent = nome;
   const logoEl = document.getElementById("brandLogo");
   if(RESTAURANT_CONFIG.logo_url){
     logoEl.innerHTML = `<img src="${RESTAURANT_CONFIG.logo_url}" alt="logo">`;
@@ -1592,7 +1590,8 @@ function applyBranding(){
     logoEl.textContent = initials;
   }
 
-   const tema = RESTAURANT_CONFIG.tema || "dark";
+  // ===== TEMA — troca TODAS as variáveis de superfície/texto, igual o cardápio presencial =====
+  const tema = RESTAURANT_CONFIG.tema || "dark";
   if(tema === "light"){
     document.documentElement.style.setProperty("--surface", "#ffffff");
     document.documentElement.style.setProperty("--surface-2", "#f2ede6");
@@ -1600,8 +1599,16 @@ function applyBranding(){
     document.documentElement.style.setProperty("--text", "#1a1814");
     document.documentElement.style.setProperty("--muted", "#555555");
     document.documentElement.style.setProperty("--muted-2", "#8a8a8a");
+  }else{
+    document.documentElement.style.setProperty("--surface", "#17140f");
+    document.documentElement.style.setProperty("--surface-2", "#211c16");
+    document.documentElement.style.setProperty("--line", "#2b251e");
+    document.documentElement.style.setProperty("--text", "#f2ede6");
+    document.documentElement.style.setProperty("--muted", "#8c877d");
+    document.documentElement.style.setProperty("--muted-2", "#5c584f");
   }
 
+  // ===== CORES DE MARCA =====
   if(RESTAURANT_CONFIG.cor_primaria){
     document.documentElement.style.setProperty("--red", RESTAURANT_CONFIG.cor_primaria);
     document.documentElement.style.setProperty("--red-glow", RESTAURANT_CONFIG.cor_primaria);
@@ -1615,7 +1622,7 @@ function applyBranding(){
   }
 
   // rodapé — Instagram do restaurante (mesmo dado usado na notinha impressa)
- const igUrl = instagramUrl(RESTAURANT_CONFIG.instagram);
+  const igUrl = instagramUrl(RESTAURANT_CONFIG.instagram);
   const igLink = document.getElementById("footerIgLink");
   if(igUrl){
     igLink.href = igUrl;
