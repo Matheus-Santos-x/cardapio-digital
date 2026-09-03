@@ -1959,11 +1959,13 @@ function closeDrawer(){
 
 function openSheet(){
   openOverlay();
+  lockBodyScroll();
   gsap.set(sheet, { y:0 });
   gsap.from(sheet, { y:"100%", duration:.5, ease:"power3.out" });
 }
 function closeSheet(){
   gsap.to(sheet, { y:"100%", duration:.4, ease:"power2.in", onComplete: closeOverlay });
+  unlockBodyScroll();
 }
 
 document.getElementById("cartFab").onclick = openDrawer;
@@ -2434,7 +2436,11 @@ bindKeyboardAwarePanel(aiModal, {
   maxHeightWhenOpen: 520,
   onSync: () => { aiMessagesEl.scrollTop = aiMessagesEl.scrollHeight; }
 });
-bindKeyboardAwarePanel(sheet);
+// OBS: o checkout (sheet) agora é página cheia (inset:0, do topo até
+// o rodapé), então NÃO usamos bindKeyboardAwarePanel nele — encolher
+// a borda de baixo pra abrir espaço do teclado fazia o cardápio
+// aparecer por trás. Página cheia não precisa desse ajuste; o próprio
+// scroll interno do formulário já resolve.
 
 function openAiChat(){
   hideAiTooltip();
