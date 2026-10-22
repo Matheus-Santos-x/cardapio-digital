@@ -68,6 +68,7 @@ header{
   }
   .brand-logo{
     width:52px; height:52px; border-radius:12px;
+    object-fit:contain;
     background:linear-gradient(155deg, var(--surface-2), var(--surface));
     border:1px solid var(--line);
     display:flex; align-items:center; justify-content:center;
@@ -235,8 +236,8 @@ header{
   }
 
   /* ================= BESTSELLERS (mais pedidos) ================= */
-  .bestsellers{
-    padding:6px 0 4px;
+ .bestsellers{
+    padding:24px 0 4px;
     position:relative; z-index:1;
   }
   .bs-heading{
@@ -312,8 +313,9 @@ header{
   /* ================= CATEGORY NAV ================= */
   .cat-nav{
     position:sticky; top:0; z-index:20;
-    background:rgba(10,9,8,.88);
-    backdrop-filter:blur(10px);
+    margin-top:16px;
+    background:rgba(255,255,255,.92);
+backdrop-filter:blur(10px);
     border-bottom:1px solid var(--line);
     padding:12px 20px;
     display:flex; gap:8px;
