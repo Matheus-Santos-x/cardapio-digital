@@ -29,7 +29,11 @@
     --font-mono:'Space Mono', monospace;
   }
 
-  *{box-sizing:border-box; margin:0; padding:0;}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  opacity:0;
+  transition:opacity 0.3s ease;
+}
   html{scroll-behavior:smooth;}
   body{
     background:var(--bg);
@@ -1658,6 +1662,7 @@ const tema = RESTAURANT_CONFIG.tema || "light";
   }
 
   renderStoreStatus();
+  document.body.style.opacity = "1";
 }
 
 function renderStoreStatus(){
