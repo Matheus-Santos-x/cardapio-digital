@@ -1597,6 +1597,13 @@ function applyBranding(){
     logoEl.textContent = initials;
   }
 
+  const bannerEl = document.getElementById("bannerImg");
+  if(bannerEl && RESTAURANT_CONFIG.banner_url){
+    bannerEl.style.backgroundImage = `url('${RESTAURANT_CONFIG.banner_url}')`;
+    bannerEl.style.backgroundSize = "cover";
+    bannerEl.style.backgroundPosition = "center";
+  }
+
   // ===== TEMA — troca TODAS as variáveis de superfície/texto, igual o cardápio presencial =====
 const tema = RESTAURANT_CONFIG.tema || "light";
   if(tema === "light"){
